@@ -38,6 +38,7 @@ fun SettingsDialog(
     onDismiss: () -> Unit,
     onAutoRefreshChange: (Int) -> Unit,
     onCompactChange: (Boolean) -> Unit,
+    onDefaultStudentChange: (String?) -> Unit,
     onCapturePage: () -> Unit,
     onOpenAlerts: () -> Unit,
     onRequestSignOut: () -> Unit,
@@ -67,6 +68,45 @@ fun SettingsDialog(
                             onClick = { onAutoRefreshChange(seconds) },
                             label = { Text(label) },
                         )
+                    }
+                }
+
+                val students = state.child?.students.orEmpty()
+                if (students.size > 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    Text(
+                        text = "Open the app on",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "The student shown each time the app starts. You can " +
+                            "still switch students from the summary card.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    // A saved default that is no longer on the account counts
+                    // as "last viewed", which is also how the app behaves.
+                    val defaultId = state.defaultStudentId
+                        ?.takeIf { id -> students.any { it.id == id } }
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = defaultId == null,
+                            onClick = { onDefaultStudentChange(null) },
+                            label = { Text("Last viewed") },
+                        )
+                        students.forEach { student ->
+                            FilterChip(
+                                selected = defaultId == student.id,
+                                onClick = { onDefaultStudentChange(student.id) },
+                                label = { Text(student.name) },
+                            )
+                        }
                     }
                 }
 

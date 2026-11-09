@@ -45,6 +45,8 @@ data class AppUiState(
     val hasSavedCredentials: Boolean = false,
     /** Student picked in the app; the summary and the live map follow it. */
     val selectedStudentId: String? = null,
+    /** Student the app opens on; null opens on the last student viewed. */
+    val defaultStudentId: String? = null,
     val debugFiles: List<File> = emptyList(),
     /** Bumped whenever the native refresh runs, so the WebView can refresh too. */
     val portalRefreshTick: Int = 0,
@@ -64,7 +66,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         AppUiState(
             autoRefreshSeconds = prefs.autoRefreshSeconds,
             compactPortal = prefs.compactPortal,
-            selectedStudentId = prefs.selectedStudentId,
+            selectedStudentId = prefs.startupStudentId,
+            defaultStudentId = prefs.defaultStudentId,
             savedEmail = secureStore.load()?.email,
             hasSavedCredentials = secureStore.hasCredentials(),
         ),
@@ -112,7 +115,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             runCatching {
                 val pages = withContext(Dispatchers.IO) {
                     client.login(email, password, remember)
-                    fetchPages(prefs.selectedStudentId)
+                    fetchPages(_state.value.selectedStudentId)
                 }
                 val info = withContext(Dispatchers.Default) {
                     runCatching { BusPlannerParser.parsePages(pages) }
@@ -304,6 +307,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         client.clearSession()
         secureStore.clear()
         prefs.selectedStudentId = null
+        prefs.defaultStudentId = null
         _state.value = AppUiState(
             phase = AppPhase.Login,
             autoRefreshSeconds = prefs.autoRefreshSeconds,
@@ -315,6 +319,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val safe = seconds.coerceIn(15, 600)
         prefs.autoRefreshSeconds = safe
         _state.update { it.copy(autoRefreshSeconds = safe) }
+    }
+
+    /**
+     * Sets the student the app opens on, or null to open on the last student
+     * viewed. Does not change who is on screen now.
+     */
+    fun setDefaultStudent(studentId: String?) {
+        prefs.defaultStudentId = studentId
+        _state.update { it.copy(defaultStudentId = studentId) }
     }
 
     fun setCompactPortal(compact: Boolean) {

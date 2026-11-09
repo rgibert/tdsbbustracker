@@ -63,6 +63,7 @@ fun BusTrackerApp(viewModel: AppViewModel = viewModel()) {
             onDismiss = { showSettings = false },
             onAutoRefreshChange = viewModel::setAutoRefreshSeconds,
             onCompactChange = viewModel::setCompactPortal,
+            onDefaultStudentChange = viewModel::setDefaultStudent,
             onCapturePage = {
                 showSettings = false
                 viewModel.captureDebugPage()

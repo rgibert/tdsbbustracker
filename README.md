@@ -122,6 +122,8 @@ login page again.
 ## Settings
 
 - **Refresh summary every** — 30 seconds to 5 minutes.
+- **Open the app on** — accounts with several students only: always start on
+  a chosen student, or on the last student viewed.
 - **Compact portal** — hide the portal header, footer, menus, and quick links
   on the alerts page.
 - **Open TSTG alerts page** — jump to the portal's alerts view.
@@ -191,7 +193,9 @@ Two quirks of the real portal are already handled:
   stop and **PM drop-off** is the afternoon drop-off at the stop.
 - Accounts with several students get a student picker on the summary card. The
   app replays the portal's own `ddlStudents` postback for the chosen student,
-  and remembers the choice.
+  and remembers the choice. **Settings > Open the app on** picks a default
+  student to start with every time; "Last viewed" (the default) reopens on
+  whoever you looked at last.
 
 Unit tests with synthetic BusPlanner markup are in
 `app/src/test/java/ca/bustracker/tstg/data/BusPlannerParserTest.kt`. Run them
