@@ -17,13 +17,13 @@ and ETA without typing a password every morning.
 - **One-tap sign-in.** Your email and password are stored on the phone,
   encrypted with a non-exportable Android Keystore key. The password is only
   ever sent to `tstg.mybusplanner.ca`.
-- **Live bus map.** The portal's own Where's My Bus page is shown in a WebView,
-  with the site header, menus, and footer hidden. The map keeps working even if
-  TSTG changes the page markup.
+- **Live bus map.** A native OpenStreetMap map shows just the bus and your stop,
+  using the GPS positions the portal publishes on its Where's My Bus page. It
+  follows the bus until you touch the map; the re-centre button follows it again.
 - **Native summary card.** The app reads the portal's hidden GPS data and ETA
   gauge and shows a quick "12 min to your stop" card above the map.
 - **Alerts.** Toggle to the TSTG alerts page from the top bar.
-- **Auto-refresh.** The summary and the portal map refresh on a configurable
+- **Auto-refresh.** The summary and the map refresh on a configurable
   interval (default 60 seconds).
 - **Session recovery.** If the portal session expires, the app signs in again
   with the saved credentials automatically.
@@ -116,13 +116,14 @@ from that app (Files/Chrome) the first time.
 3. Tap **Sign in**.
 
 The app signs in with a normal ASP.NET WebForms postback, copies the session
-cookies into the WebView, and opens the live map. You should not see the portal
+cookies into the WebView used for alerts, and opens the live map. You should not see the portal
 login page again.
 
 ## Settings
 
 - **Refresh summary every** — 30 seconds to 5 minutes.
-- **Compact portal** — hide the portal header, footer, menus, and quick links.
+- **Compact portal** — hide the portal header, footer, menus, and quick links
+  on the alerts page.
 - **Open TSTG alerts page** — jump to the portal's alerts view.
 - **Save logged-in pages for tuning** — writes the student and live-map HTML
   files and opens the Android share sheet.
@@ -147,11 +148,11 @@ login page again.
    - `#lblBulletin`
    - `SetETAGauge(...)` inline script calls
    - label/value tables as a fallback
-4. The WebView opens `/Subscriptions/WheresMyBus`. The app copies the OkHttp
-   cookies into Android's `CookieManager` so the map does not ask for a second
-   login. It also calls the portal's own `drawBusAndStops(true)` helper when
-   GPS data is present, and clicks the portal's Refresh button on each
-   auto-refresh.
+4. The map (`BusMap.kt`, osmdroid) draws the bus from `hfBusLocation` and the
+   stop from `hfBusStopLocations`. Tiles come from OpenStreetMap, with the
+   attribution its tile policy requires. The alerts page is still the portal's
+   own page in a WebView, with the OkHttp cookies copied into Android's
+   `CookieManager` so it does not ask for a second login.
 
 ## Privacy and security
 
@@ -190,7 +191,7 @@ Two quirks of the real portal are already handled:
   stop and **PM drop-off** is the afternoon drop-off at the stop.
 - Accounts with several students get a student picker on the summary card. The
   app replays the portal's own `ddlStudents` postback for the chosen student,
-  switches the live map's dropdown to match, and remembers the choice.
+  and remembers the choice.
 
 Unit tests with synthetic BusPlanner markup are in
 `app/src/test/java/ca/bustracker/tstg/data/BusPlannerParserTest.kt`. Run them
@@ -205,8 +206,8 @@ with:
 | Symptom | What to try |
 | --- | --- |
 | "Email or password is incorrect" | Sign in to the portal in a browser to confirm the password. The app does not bypass TSTG's own login rules. |
-| Summary card is empty but the map works | The portal may be showing "vehicle information unavailable". The card will fill in when TSTG has a GPS fix. |
-| Map is blank | Tap Refresh. If it stays blank, check that the phone can reach `tstg.mybusplanner.ca` and `maptiles.p.rapidapi.com`. |
+| Map says "No live bus position right now" | The portal has no GPS fix for the bus (it is not on the road yet, or TSTG shows "vehicle information unavailable"). The bus appears on the next refresh after it does. |
+| Map tiles are blank | Check that the phone can reach `tile.openstreetmap.org`. The bus and stop markers still update without tiles. |
 | App returns to the login screen | The saved password may have changed. Sign in again; the app clears a stored password that no longer works. |
 | Portal shows a Code of Conduct popup | The WebView automatically accepts visible acknowledgement dialogs. If a new popup appears, capture the page and report it. |
 
@@ -224,8 +225,9 @@ app/src/main/java/ca/bustracker/tstg/
     App.kt                   root phase switching
     AppViewModel.kt          auth, refresh, session recovery
     LoginScreen.kt           credentials form
-    MainScreen.kt            summary card + WebView
-    PortalWebView.kt         cookie sync, map bootstrap, compact CSS
+    MainScreen.kt            summary card + map or alerts
+    BusMap.kt                native OpenStreetMap bus/stop map
+    PortalWebView.kt         alerts WebView: cookie sync, compact CSS
     SummaryCard.kt           native ETA/bus/stop card
     SettingsDialog.kt        settings and debug capture
   util/
