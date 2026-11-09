@@ -66,8 +66,8 @@ fun MainScreen(
         onClearMessage()
     }
 
-    // Quietly re-parse the page in the background. The WebView keeps its own
-    // live map; this only keeps the native ETA card from going stale.
+    // Quietly re-read the portal in the background. This moves the bus on the
+    // map and keeps the ETA card from going stale.
     LaunchedEffect(state.autoRefreshSeconds) {
         while (true) {
             delay(state.autoRefreshSeconds * 1000L)
@@ -195,23 +195,30 @@ fun MainScreen(
                 )
             }
 
-            PortalWebView(
-                url = if (portalTarget == PortalTarget.Alerts) {
-                    Constants.ALERTS_URL
-                } else {
-                    Constants.WHERES_MY_BUS_URL
-                },
-                compact = state.compactPortal,
-                sessionGeneration = state.sessionGeneration,
-                refreshTick = state.portalRefreshTick,
-                cookies = cookies,
-                onSessionExpired = onSessionExpired,
-                studentId = state.selectedStudentId,
-                hideStudentSelector = (state.child?.students?.size ?: 0) > 1,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            )
+            if (portalTarget == PortalTarget.Alerts) {
+                PortalWebView(
+                    url = Constants.ALERTS_URL,
+                    compact = state.compactPortal,
+                    sessionGeneration = state.sessionGeneration,
+                    refreshTick = state.portalRefreshTick,
+                    cookies = cookies,
+                    onSessionExpired = onSessionExpired,
+                    studentId = state.selectedStudentId,
+                    hideStudentSelector = (state.child?.students?.size ?: 0) > 1,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                )
+            } else {
+                // Just the map: bus and stop positions come from the same
+                // portal refresh that fills the summary card.
+                BusMap(
+                    child = state.child,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                )
+            }
         }
     }
 }
