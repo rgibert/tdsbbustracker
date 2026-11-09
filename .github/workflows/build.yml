@@ -1,0 +1,171 @@
+name: Build APKs
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test, and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Derive version
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "APP_VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            # Test builds carry the commit instead of a version tag; the run
+            # number keeps versionCode numeric and increasing.
+            sha="${PR_HEAD_SHA:-$GITHUB_SHA}"
+            echo "APP_VERSION_NAME=${sha:0:7}" >> "$GITHUB_ENV"
+            echo "APP_VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Prepare release keystore
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BUS_TRACKER_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "BUS_TRACKER_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and lint
+        env:
+          BUS_TRACKER_KEYSTORE_PASSWORD: ${{ secrets.BUS_TRACKER_KEYSTORE_PASSWORD }}
+          BUS_TRACKER_KEY_ALIAS: ${{ secrets.BUS_TRACKER_KEY_ALIAS }}
+          BUS_TRACKER_KEY_PASSWORD: ${{ secrets.BUS_TRACKER_KEY_PASSWORD }}
+        run: |
+          # Release APKs are only worth building for a version tag; pull
+          # requests ship the debug artifact instead.
+          tasks=(:app:assembleDebug :app:lintDebug)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tasks+=(:app:assembleRelease)
+          fi
+          ./gradlew "${tasks[@]}" --stacktrace
+
+      - name: Upload debug APK
+        id: debug-apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: bus-tracker-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload release APK
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: bus-tracker-release
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+          debug_apk="$RUNNER_TEMP/bustracker-${version}-debug.apk"
+          release_source="$(find app/build/outputs/apk/release -name '*.apk' -print -quit)"
+          cp app/build/outputs/apk/debug/app-debug.apk "$debug_apk"
+
+          signed=true
+          if [[ -z "$release_source" || "$release_source" == *unsigned* ]]; then
+            signed=false
+            echo "::warning::Release APK is unsigned because no BUS_TRACKER_KEYSTORE_BASE64 secret is configured; publishing only the debug APK."
+            release_apk=""
+          else
+            release_apk="$RUNNER_TEMP/bustracker-${version}.apk"
+            cp "$release_source" "$release_apk"
+          fi
+
+          assets=("$debug_apk")
+          if [[ "$signed" == true ]]; then
+            assets+=("$release_apk")
+          fi
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+              --title "Bus Tracker $GITHUB_REF_NAME" \
+              --generate-notes \
+              --verify-tag
+          fi
+
+      - name: Comment test APK on pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ARTIFACT_URL: ${{ steps.debug-apk.outputs.artifact-url }}
+        run: |
+          set -euo pipefail
+
+          sha="${PR_HEAD_SHA:0:7}"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          # Keep one comment per PR and update it when a new build is uploaded.
+          marker="<!-- bustracker-pr-release -->"
+          body="$(printf '%s\nTest APK for %s: [download the artifact](%s) ([workflow run](%s))' \
+            "$marker" "$sha" "$ARTIFACT_URL" "$run_url")"
+          comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n 1 || true)"
+          if [[ -n "$comment_id" ]]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -f body="$body" >/dev/null
+          else
+            gh pr comment "$PR_NUMBER" --body "$body" >/dev/null
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/test-results/testDebugUnitTest
+          if-no-files-found: ignore
+          retention-days: 14
