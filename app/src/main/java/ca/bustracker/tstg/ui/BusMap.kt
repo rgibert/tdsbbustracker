@@ -2,6 +2,7 @@ package ca.bustracker.tstg.ui
 
 import android.content.Context
 import android.view.MotionEvent
+import android.view.ViewOutlineProvider
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -220,6 +221,12 @@ private class MapState(context: Context) {
             osmdroidTileCache = File(base, "tiles")
         }
         map = MapView(context).apply {
+            // osmdroid draws whole 256px tiles, so the edge tiles stick out
+            // past the view. Clip at the view's own render node; otherwise the
+            // overhang slides over the card above while dragging, which looks
+            // like the whole map box moving.
+            clipToOutline = true
+            outlineProvider = ViewOutlineProvider.BOUNDS
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
