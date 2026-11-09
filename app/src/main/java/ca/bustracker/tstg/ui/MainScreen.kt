@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -144,10 +145,12 @@ fun MainScreen(
             )
         },
     ) { innerPadding ->
+        // Only pad the top: the map runs to the bottom edge of the screen,
+        // behind the navigation bar, and keeps its own controls clear of it.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(top = innerPadding.calculateTopPadding()),
         ) {
             SummaryCard(
                 child = state.child,
@@ -207,7 +210,8 @@ fun MainScreen(
                     hideStudentSelector = (state.child?.students?.size ?: 0) > 1,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .navigationBarsPadding(),
                 )
             } else {
                 // Just the map: bus and stop positions come from the same

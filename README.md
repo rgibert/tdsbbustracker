@@ -19,7 +19,7 @@ and ETA without typing a password every morning.
   ever sent to `tstg.mybusplanner.ca`.
 - **Live bus map.** A native OpenStreetMap map shows just the bus and your stop,
   using the GPS positions the portal publishes on its Where's My Bus page. It
-  follows the bus until you pan or zoom; the re-centre button follows it again.
+  follows the bus until you touch the map; the re-centre button follows it again.
 - **Native summary card.** The app reads the portal's hidden GPS data and ETA
   gauge and shows a quick "12 min to your stop" card above the map.
 - **Alerts.** Toggle to the TSTG alerts page from the top bar.

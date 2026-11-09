@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +57,7 @@ private const val MAX_FIT_ZOOM = 17.0
  * Native map of the live bus and the student's stop, drawn from the GPS
  * positions the app already reads from the portal's Where's My Bus page.
  *
- * The map follows the bus on every refresh until the person pans or zooms;
+ * The map follows the bus on every refresh until the person touches it;
  * the re-centre button turns following back on.
  */
 @Composable
@@ -99,7 +101,10 @@ fun BusMap(
         state.fit(bus, stop)
     }
 
-    Box(modifier = modifier) {
+    // clipToBounds: while pinching, osmdroid draws scaled tiles outside its
+    // own rectangle, which Compose does not clip for an embedded view. The
+    // map then spilled over the card above it and appeared to bounce.
+    Box(modifier = modifier.clipToBounds()) {
         AndroidView(factory = { state.map }, modifier = Modifier.fillMaxSize())
 
         StatusBanner(
@@ -116,6 +121,7 @@ fun BusMap(
                 onClick = { recenterRequests++ },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
                     .padding(12.dp),
             ) {
                 Icon(Icons.Filled.MyLocation, contentDescription = "Re-centre on the bus")
@@ -129,6 +135,7 @@ fun BusMap(
             color = Color(0xFF424242),
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .navigationBarsPadding()
                 .padding(4.dp),
         )
     }
@@ -217,6 +224,14 @@ private class MapState(context: Context) {
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             isTilesScaledToDpi = true
+            // One copy of the world, and no panning past the poles.
+            isHorizontalMapRepetitionEnabled = false
+            isVerticalMapRepetitionEnabled = false
+            setScrollableAreaLimitLatitude(
+                MapView.getTileSystem().maxLatitude,
+                MapView.getTileSystem().minLatitude,
+                0,
+            )
             minZoomLevel = 4.0
             maxZoomLevel = 19.0
             controller.setZoom(DEFAULT_ZOOM)
@@ -277,11 +292,9 @@ private class MapState(context: Context) {
 /** Notices when the person touches the map so we stop auto-following. */
 private class TouchWatcher(private val onTouched: () -> Unit) : Overlay() {
     override fun onTouchEvent(event: MotionEvent, mapView: MapView): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_MOVE ||
-            event.actionMasked == MotionEvent.ACTION_POINTER_DOWN
-        ) {
-            onTouched()
-        }
+        // Any touch counts, including a double-tap zoom, so a refresh never
+        // yanks the view back while the person is looking around.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) onTouched()
         return false
     }
 }
