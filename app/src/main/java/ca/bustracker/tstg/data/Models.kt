@@ -70,6 +70,22 @@ data class ChildInfo(
             mapDelayText,
         ).any { !it.isNullOrBlank() } || etaMinutes != null
 
+    /**
+     * The portal puts several times in one label (e.g. "Last updated 8:15 AM
+     * Last reported 8:14 AM"). Splits it so each time gets its own line.
+     */
+    val lastPositionLines: List<String>
+        get() {
+            val text = lastPositionText?.trim().orEmpty()
+            if (text.isEmpty()) return emptyList()
+            val starts = POSITION_PART_REGEX.findAll(text).map { it.range.first }.toMutableList()
+            if (starts.firstOrNull() != 0) starts.add(0, 0)
+            return starts.mapIndexed { i, start ->
+                val end = starts.getOrNull(i + 1) ?: text.length
+                text.substring(start, end).trim().trimEnd(',', ';', '|', '·', '•', '-').trim()
+            }.filter { it.isNotEmpty() }
+        }
+
     val hasLiveBus: Boolean
         get() = busLatitude != null && busLongitude != null
 
@@ -135,3 +151,7 @@ class SessionExpiredException :
     PortalException("Your portal session expired. Signing in again…")
 
 class PortalHttpException(message: String) : PortalException(message)
+
+/** Start of each time phrase in the portal's latest-position label. */
+private val POSITION_PART_REGEX =
+    Regex("\\b(?:last\\s+)?(?:updated|reported|received)\\b", RegexOption.IGNORE_CASE)

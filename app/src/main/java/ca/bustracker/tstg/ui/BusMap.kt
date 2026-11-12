@@ -108,14 +108,17 @@ fun BusMap(
     Box(modifier = modifier.clipToBounds()) {
         AndroidView(factory = { state.map }, modifier = Modifier.fillMaxSize())
 
-        StatusBanner(
-            child = child,
-            hasBus = bus != null,
-            hasStop = stop != null,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 10.dp, start = 12.dp, end = 12.dp),
-        )
+        // The bus, route and position times are on the card above, so the
+        // map only explains itself when there is no bus to show.
+        if (bus == null) {
+            StatusBanner(
+                child = child,
+                hasStop = stop != null,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 10.dp, start = 12.dp, end = 12.dp),
+            )
+        }
 
         if (bus != null || stop != null) {
             SmallFloatingActionButton(
@@ -145,26 +148,18 @@ fun BusMap(
 @Composable
 private fun StatusBanner(
     child: ChildInfo?,
-    hasBus: Boolean,
     hasStop: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val title: String
     val detail: String?
-    when {
-        hasBus -> {
-            title = child?.busAndRoute ?: "Bus location"
-            detail = child?.lastPositionText ?: child?.mapDelayText
-        }
-        child == null -> {
-            title = "Loading the bus location…"
-            detail = null
-        }
-        else -> {
-            title = "No live bus position right now"
-            detail = child.mapDelayText ?: child.lastPositionText
-                ?: if (hasStop) "Showing your stop. The bus appears when it's on the road." else null
-        }
+    if (child == null) {
+        title = "Loading the bus location…"
+        detail = null
+    } else {
+        title = "No live bus position right now"
+        detail = child.mapDelayText
+            ?: if (hasStop) "Showing your stop. The bus appears when it's on the road." else null
     }
     Surface(
         shape = RoundedCornerShape(12.dp),

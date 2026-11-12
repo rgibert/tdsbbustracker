@@ -173,10 +173,7 @@ fun SummaryCard(
                         ?: stop
                     Icons.Filled.Place to full
                 },
-                info?.lastPositionText?.takeIf { it.isNotBlank() }?.let {
-                    Icons.Filled.MyLocation to it
-                },
-            )
+            ) + info?.lastPositionLines.orEmpty().map { Icons.Filled.MyLocation to it }
             if (details.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
