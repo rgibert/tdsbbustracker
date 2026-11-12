@@ -73,7 +73,8 @@ data class ChildInfo(
     /**
      * The portal packs several values into one label, e.g. "Last updated
      * 8:15 AM latest Last reported 8:14 AM Run 12A". Splits it into the
-     * times (shown next to the AM/PM times) and the run (its own row).
+     * reported time (shown next to the AM/PM times) and the run (its own
+     * row). The "updated" time is dropped, and "Last" is taken off labels.
      */
     val positionDetails: PositionDetails
         get() {
@@ -99,10 +100,15 @@ data class ChildInfo(
                     return@forEachIndexed
                 }
                 val label = part.substring(0, time.range.first).cleanPart().trimEnd(':').trim()
-                times += PositionTime(
-                    label = label.replaceFirstChar { it.uppercase() }.ifEmpty { "Last position" },
-                    time = time.value.trim(),
-                )
+                    .replace(LEADING_LAST_REGEX, "")
+                // The card already shows when the app last refreshed, so the
+                // portal's own "updated" time would just repeat it.
+                if (!UPDATED_REGEX.containsMatchIn(label)) {
+                    times += PositionTime(
+                        label = label.replaceFirstChar { it.uppercase() }.ifEmpty { "Position" },
+                        time = time.value.trim(),
+                    )
+                }
                 part.substring(time.range.last + 1).cleanPart().takeIf { it.isNotEmpty() }
                     ?.let { other += it }
             }
@@ -193,6 +199,8 @@ private val POSITION_PART_REGEX = Regex(
     RegexOption.IGNORE_CASE,
 )
 private val RUN_REGEX = Regex("^run\\b", RegexOption.IGNORE_CASE)
+private val LEADING_LAST_REGEX = Regex("^(?:last|latest)\\s+", RegexOption.IGNORE_CASE)
+private val UPDATED_REGEX = Regex("^updated\\b", RegexOption.IGNORE_CASE)
 private val TRAILING_LATEST_REGEX = Regex("\\s*\\blatest$", RegexOption.IGNORE_CASE)
 private val TIME_REGEX = Regex(
     "\\b\\d{1,2}:\\d{2}(?::\\d{2})?(?:\\s*[ap]\\.?\\s?m\\.?)?",
