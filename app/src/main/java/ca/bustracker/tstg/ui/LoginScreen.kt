@@ -45,6 +45,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.platform.LocalAutofillManager
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -69,9 +73,15 @@ fun LoginScreen(
     var showPassword by rememberSaveable { mutableStateOf(false) }
 
     val canSubmit = !state.busy && email.isNotBlank() && password.isNotBlank()
+    val autofillManager = LocalAutofillManager.current
 
     fun submit() {
-        if (canSubmit) onLogin(email, password, remember)
+        if (canSubmit) {
+            // Tell the autofill service (1Password, Google, etc.) the form was
+            // submitted so it can offer to save or update the login.
+            autofillManager?.commit()
+            onLogin(email, password, remember)
+        }
     }
 
     Box(
@@ -149,7 +159,11 @@ fun LoginScreen(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next,
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                // Expose the field to Android's Autofill framework so password
+                // managers like 1Password can recognise and fill it.
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentType = ContentType.Username + ContentType.EmailAddress },
             )
             Spacer(Modifier.height(12.dp))
 
@@ -188,7 +202,9 @@ fun LoginScreen(
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentType = ContentType.Password },
             )
             Spacer(Modifier.height(16.dp))
 
