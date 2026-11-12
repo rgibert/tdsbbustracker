@@ -170,6 +170,7 @@ fun SummaryCard(
                 info?.busAndRoute?.takeIf { it.isNotBlank() }?.let {
                     Icons.Filled.DirectionsBus to it
                 },
+                position?.run?.let { Icons.Filled.DirectionsBus to it },
                 info?.stopName?.takeIf { it.isNotBlank() }?.let { stop ->
                     val full = info?.stopAddress
                         ?.takeIf { address -> address.isNotBlank() && !stop.contains(address) }
@@ -177,7 +178,6 @@ fun SummaryCard(
                         ?: stop
                     Icons.Filled.Place to full
                 },
-                position?.run?.let { Icons.Filled.DirectionsBus to it },
             ) + position?.other.orEmpty().map { Icons.Filled.MyLocation to it }
             if (details.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
