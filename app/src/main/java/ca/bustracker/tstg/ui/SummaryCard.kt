@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -170,7 +171,7 @@ fun SummaryCard(
                 info?.busAndRoute?.takeIf { it.isNotBlank() }?.let {
                     Icons.Filled.DirectionsBus to it
                 },
-                position?.run?.let { Icons.Filled.DirectionsBus to it },
+                position?.run?.let { Icons.Filled.Route to it },
                 info?.stopName?.takeIf { it.isNotBlank() }?.let { stop ->
                     val full = info?.stopAddress
                         ?.takeIf { address -> address.isNotBlank() && !stop.contains(address) }
