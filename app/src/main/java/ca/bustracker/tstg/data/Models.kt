@@ -71,19 +71,42 @@ data class ChildInfo(
         ).any { !it.isNullOrBlank() } || etaMinutes != null
 
     /**
-     * The portal puts several times in one label (e.g. "Last updated 8:15 AM
-     * Last reported 8:14 AM"). Splits it so each time gets its own line.
+     * The portal packs several values into one label, e.g. "Last updated
+     * 8:15 AM latest Last reported 8:14 AM Run 12A". Splits it into the
+     * times (shown next to the AM/PM times) and the run (its own row).
      */
-    val lastPositionLines: List<String>
+    val positionDetails: PositionDetails
         get() {
             val text = lastPositionText?.trim().orEmpty()
-            if (text.isEmpty()) return emptyList()
+            if (text.isEmpty()) return PositionDetails()
             val starts = POSITION_PART_REGEX.findAll(text).map { it.range.first }.toMutableList()
             if (starts.firstOrNull() != 0) starts.add(0, 0)
-            return starts.mapIndexed { i, start ->
+            val times = mutableListOf<PositionTime>()
+            val other = mutableListOf<String>()
+            var run: String? = null
+            starts.forEachIndexed { i, start ->
                 val end = starts.getOrNull(i + 1) ?: text.length
-                text.substring(start, end).trim().trimEnd(',', ';', '|', '·', '•', '-').trim()
-            }.filter { it.isNotEmpty() }
+                val part = text.substring(start, end).cleanPart()
+                    .replace(TRAILING_LATEST_REGEX, "").cleanPart()
+                if (part.isEmpty()) return@forEachIndexed
+                if (RUN_REGEX.containsMatchIn(part)) {
+                    run = part
+                    return@forEachIndexed
+                }
+                val time = TIME_REGEX.find(part)
+                if (time == null) {
+                    other += part
+                    return@forEachIndexed
+                }
+                val label = part.substring(0, time.range.first).cleanPart().trimEnd(':').trim()
+                times += PositionTime(
+                    label = label.replaceFirstChar { it.uppercase() }.ifEmpty { "Last position" },
+                    time = time.value.trim(),
+                )
+                part.substring(time.range.last + 1).cleanPart().takeIf { it.isNotEmpty() }
+                    ?.let { other += it }
+            }
+            return PositionDetails(times, run, other)
         }
 
     val hasLiveBus: Boolean
@@ -152,6 +175,29 @@ class SessionExpiredException :
 
 class PortalHttpException(message: String) : PortalException(message)
 
-/** Start of each time phrase in the portal's latest-position label. */
-private val POSITION_PART_REGEX =
-    Regex("\\b(?:last\\s+)?(?:updated|reported|received)\\b", RegexOption.IGNORE_CASE)
+/** A labelled time from the portal's latest-position label. */
+data class PositionTime(val label: String, val time: String)
+
+/** The portal's latest-position label, split into its parts. */
+data class PositionDetails(
+    val times: List<PositionTime> = emptyList(),
+    /** e.g. "Run 12A". */
+    val run: String? = null,
+    /** Anything that was not recognised, shown as-is. */
+    val other: List<String> = emptyList(),
+)
+
+/** Start of each part of the portal's latest-position label. */
+private val POSITION_PART_REGEX = Regex(
+    "\\b(?:(?:last|latest)\\s+)?(?:updated|reported|received)\\b|\\brun\\b",
+    RegexOption.IGNORE_CASE,
+)
+private val RUN_REGEX = Regex("^run\\b", RegexOption.IGNORE_CASE)
+private val TRAILING_LATEST_REGEX = Regex("\\s*\\blatest$", RegexOption.IGNORE_CASE)
+private val TIME_REGEX = Regex(
+    "\\b\\d{1,2}:\\d{2}(?::\\d{2})?(?:\\s*[ap]\\.?\\s?m\\.?)?",
+    RegexOption.IGNORE_CASE,
+)
+
+private fun String.cleanPart(): String =
+    trim().trim(',', ';', '|', '·', '•', '-').trim()

@@ -3,6 +3,8 @@ package ca.bustracker.tstg.ui
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +46,7 @@ import java.util.Date
  * Native summary of the parsed portal page. The WebView below remains the
  * source of truth for the live map; this card gives a quick glance answer.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SummaryCard(
     child: ChildInfo?,
@@ -162,6 +165,7 @@ fun SummaryCard(
             }
 
             val info = child
+            val position = info?.positionDetails
             val details = listOfNotNull(
                 info?.busAndRoute?.takeIf { it.isNotBlank() }?.let {
                     Icons.Filled.DirectionsBus to it
@@ -173,7 +177,8 @@ fun SummaryCard(
                         ?: stop
                     Icons.Filled.Place to full
                 },
-            ) + info?.lastPositionLines.orEmpty().map { Icons.Filled.MyLocation to it }
+                position?.run?.let { Icons.Filled.DirectionsBus to it },
+            ) + position?.other.orEmpty().map { Icons.Filled.MyLocation to it }
             if (details.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -199,13 +204,17 @@ fun SummaryCard(
 
             val amTime = child?.amTime?.takeIf { it.isNotBlank() }
             val pmTime = child?.pmTime?.takeIf { it.isNotBlank() }
-            if (amTime != null || pmTime != null) {
+            val positionTimes = position?.times.orEmpty()
+            if (amTime != null || pmTime != null || positionTimes.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                Row(
+                // Wraps onto a second line on narrow screens.
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     amTime?.let { TimeBlock(label = "AM pickup", time = it) }
                     pmTime?.let { TimeBlock(label = "PM drop-off", time = it) }
+                    positionTimes.forEach { TimeBlock(label = it.label, time = it.time) }
                 }
             }
 
