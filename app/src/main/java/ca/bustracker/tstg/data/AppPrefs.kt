@@ -22,9 +22,26 @@ class AppPrefs(context: Context) {
         get() = prefs.getString(KEY_STUDENT, null)?.takeIf { it.isNotBlank() }
         set(value) = prefs.edit().putString(KEY_STUDENT, value).apply()
 
+    var themeMode: ThemeMode
+        get() = ThemeMode.fromKey(prefs.getString(KEY_THEME, null))
+        set(value) = prefs.edit().putString(KEY_THEME, value.key).apply()
+
     private companion object {
         const val KEY_AUTO_REFRESH = "auto_refresh_seconds"
         const val KEY_COMPACT = "compact_portal"
         const val KEY_STUDENT = "selected_student_id"
+        const val KEY_THEME = "theme_mode"
+    }
+}
+
+/** Light or dark appearance; [System] follows the phone's dark theme setting. */
+enum class ThemeMode(val key: String, val label: String) {
+    System("system", "System"),
+    Light("light", "Light"),
+    Dark("dark", "Dark"),
+    ;
+
+    companion object {
+        fun fromKey(key: String?): ThemeMode = entries.firstOrNull { it.key == key } ?: System
     }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch window when the phone is in dark mode, so there is no white
+         flash before Compose draws. The in-app theme setting takes over after. -->
+    <style name="Theme.BusTracker" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/brand_blue</item>
+    </style>
+</resources>

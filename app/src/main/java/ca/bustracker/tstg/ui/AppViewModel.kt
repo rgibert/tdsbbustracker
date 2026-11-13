@@ -13,6 +13,7 @@ import ca.bustracker.tstg.data.PortalException
 import ca.bustracker.tstg.data.PortalPage
 import ca.bustracker.tstg.data.SecureStore
 import ca.bustracker.tstg.data.SessionExpiredException
+import ca.bustracker.tstg.data.ThemeMode
 import ca.bustracker.tstg.util.DebugExport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ data class AppUiState(
     val sessionGeneration: Int = 0,
     val autoRefreshSeconds: Int = 60,
     val compactPortal: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.System,
     val hasSavedCredentials: Boolean = false,
     /** Student picked in the app; the summary and the live map follow it. */
     val selectedStudentId: String? = null,
@@ -64,6 +66,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         AppUiState(
             autoRefreshSeconds = prefs.autoRefreshSeconds,
             compactPortal = prefs.compactPortal,
+            themeMode = prefs.themeMode,
             selectedStudentId = prefs.selectedStudentId,
             savedEmail = secureStore.load()?.email,
             hasSavedCredentials = secureStore.hasCredentials(),
@@ -308,6 +311,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             phase = AppPhase.Login,
             autoRefreshSeconds = prefs.autoRefreshSeconds,
             compactPortal = prefs.compactPortal,
+            themeMode = prefs.themeMode,
         )
     }
 
@@ -320,6 +324,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setCompactPortal(compact: Boolean) {
         prefs.compactPortal = compact
         _state.update { it.copy(compactPortal = compact) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.themeMode = mode
+        _state.update { it.copy(themeMode = mode) }
     }
 
     fun captureDebugPage() {

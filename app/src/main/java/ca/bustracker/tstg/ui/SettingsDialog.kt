@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ca.bustracker.tstg.data.ThemeMode
 
 private val refreshChoices = listOf(
     30 to "30 s",
@@ -38,6 +39,7 @@ fun SettingsDialog(
     onDismiss: () -> Unit,
     onAutoRefreshChange: (Int) -> Unit,
     onCompactChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onCapturePage: () -> Unit,
     onOpenAlerts: () -> Unit,
     onRequestSignOut: () -> Unit,
@@ -66,6 +68,27 @@ fun SettingsDialog(
                             selected = state.autoRefreshSeconds == seconds,
                             onClick = { onAutoRefreshChange(seconds) },
                             label = { Text(label) },
+                        )
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                Text(
+                    text = "Theme",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ThemeMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = state.themeMode == mode,
+                            onClick = { onThemeModeChange(mode) },
+                            label = { Text(mode.label) },
                         )
                     }
                 }
