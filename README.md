@@ -25,6 +25,8 @@ and ETA without typing a password every morning.
 - **Alerts.** Toggle to the TSTG alerts page from the top bar.
 - **Auto-refresh.** The summary and the map refresh on a configurable
   interval (default 60 seconds).
+- **Dark mode.** Follows the phone's dark theme by default, or pick Light or
+  Dark in Settings. (The map tiles and portal pages keep their own colours.)
 - **Session recovery.** If the portal session expires, the app signs in again
   with the saved credentials automatically.
 
