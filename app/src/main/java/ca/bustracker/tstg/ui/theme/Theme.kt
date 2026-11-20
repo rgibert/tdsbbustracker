@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import ca.bustracker.tstg.data.ThemeMode
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF0B57D0),
+    primary = Color(0xFF2A62A8),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFD3E3FD),
     onPrimaryContainer = Color(0xFF041E49),
@@ -37,7 +37,7 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFA8C7FA),
+    primary = Color(0xFFBBD8FA),
     onPrimary = Color(0xFF062E6F),
     primaryContainer = Color(0xFF0842A0),
     onPrimaryContainer = Color(0xFFD3E3FD),
